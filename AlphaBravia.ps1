@@ -20,20 +20,16 @@ function Update-Configuration {
     [Parameter(Mandatory=$true)]
     [String]$Name,
     [Parameter(Mandatory=$true)]
-    [String]$Value
+    $Value
     )
     
     $Script:BraviaConfigPath = (Join-Path (Get-ConfigurationPath) -ChildPath "config.json")
-    
-    $JsonConfig = get-content $Script:BraviaConfigPath | convertfrom-json
-    $JsonConfig | Add-Member NoteProperty $Name $Value
-    $Script:BraviaConfig | Add-Member NoteProperty $Name $Value
+    $Script:BraviaConfig | Add-Member -MemberType NoteProperty $Name $Value -Force
     $Script:BraviaConfig | convertto-json | out-file $Script:BraviaConfigPath
 }
 
 function Reload-Configuration {
     $Script:BraviaConfig = Get-Content $Script:BraviaConfigPath | ConvertFrom-Json
-    $Script:BraviaConfig | Add-Member "Session" (Get-BraviaSession) -TypeName Microsoft.PowerShell.Commands.WebRequestSession
     return $Script:BraviaConfig
 
 }
@@ -55,6 +51,8 @@ function Get-ModuleConfiguration {
     }
 
     Reload-Configuration | Out-Null
+
+    Update-Configuration -Name "RemoteCodes" -Value (Get-BraviaRemoteCodes)
 
     
 }
@@ -133,9 +131,17 @@ function Get-BraviaSession {
 	return $session
 }
 
+function Send-BraviaPostRequest($Path, $Headers, $Body, $ContentType = 'application/json') {
+    Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Headers $Headers -Body $Body -ContentType $ContentType -Method POST
+}
+
+function Send-BraviaGetRequest($Path, $Headers, $Body, $ContentType = 'application/json') {
+    Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession)
+}
+
 function Get-BraviaApps {
     $Script:BraviaConfig = Reload-Configuration
-	$response = invoke-webrequest ('http://' + $Script:BraviaConfig.Address + '/DIAL/sony/applist') -WebSession (Get-BraviaSession)
+	$response = Send-BraviaGetRequest 'DIAL/sony/applist'
 	$XmlDocument = [xml]$response
 
     $Apps = @{}
@@ -150,7 +156,27 @@ function Start-BraviaApp {
     [String]$AppName
     )
     $Apps = Get-BraviaApps
-    $response = invoke-webrequest -Method POST ('http://' + $Script:BraviaConfig.Address + '/DIAL/apps/' + $apps[$AppName]) -WebSession (Get-BraviaSession)
+    $response = Send-BraviaPostRequest 'http://' + $Script:BraviaConfig.Address + '/DIAL/apps/' + $apps[$AppName]
+}
+
+function Send-BraviaRemoteCode($code_name) {
+    $code = $Script:BraviaConfig.RemoteCodes[$code_name]
+    $Headers = @{'SOAPACTION' = '"urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"'}
+    #Seriously, Sony?
+    $Body = '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">'
+    $Body += '<s:Body><u:X_SendIRCC xmlns:u="urn:schemas-sony-com:service:IRCC:1"><IRCCCode>'
+    $Body += $code + '</IRCCCode></u:X_SendIRCC></s:Body></s:Envelope>'
+    Send-BraviaPostRequest -Path "sony/IRCC" -Headers $Headers -Body $Body -ContentType "text/xml"
+
+}
+
+function Get-BraviaRemoteCodes {
+    $payload = New-PayloadObject -Method "getRemoteControllerInfo"
+    $response = Send-BraviaPostRequest -Path 'sony/system' -WebSession (Get-BraviaSession) -Method Post -Body $payload
+    $codes = @{}
+    $response_object = $response | ConvertFrom-Json #| %{if (!($_.name -eq $null)) {$codes[$_.name] = $_.value}}
+    $response_object.result[1] | %{$codes[$_.name] = $_.value}
+    return $codes
 }
 
 Get-ModuleConfiguration
