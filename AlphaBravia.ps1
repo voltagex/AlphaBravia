@@ -138,7 +138,6 @@ function Get-BraviaApps {
 	$response = invoke-webrequest ('http://' + $Script:BraviaConfig.Address + '/DIAL/sony/applist') -WebSession (Get-BraviaSession)
 	$XmlDocument = [xml]$response
 
-    XmlDoc
     $Apps = @{}
     $XmlDocument.service.app | %{$Apps[$_.Name] = $_.id}
 
@@ -150,8 +149,8 @@ function Start-BraviaApp {
     [Parameter(Mandatory=$true)]
     [String]$AppName
     )
-    Get-BraviaApps
-    $response = invoke-webrequest -Method POST ('http://' + $Script:BraviaConfig.Address + '/DIAL/apps/' + $apps['Plex']) -WebSession (Get-BraviaSession)
+    $Apps = Get-BraviaApps
+    $response = invoke-webrequest -Method POST ('http://' + $Script:BraviaConfig.Address + '/DIAL/apps/' + $apps[$AppName]) -WebSession (Get-BraviaSession)
 }
 
 Get-ModuleConfiguration
