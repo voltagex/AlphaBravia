@@ -132,10 +132,18 @@ function Get-BraviaSession {
 }
 
 function Send-BraviaPostRequest($Path, $Headers, $Body, $ContentType = 'application/json') {
-    Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Headers $Headers -Body $Body -ContentType $ContentType -Method POST
+    if ($Body -eq $null) { #empty POST?
+
+            Write-Output   "empty"
+            Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Method POST
+    } 
+    
+    else {
+            Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Headers $Headers -Body $Body -ContentType $ContentType -Method POST
+    }
 }
 
-function Send-BraviaGetRequest($Path, $Headers, $Body, $ContentType = 'application/json') {
+function Send-BraviaGetRequest($Path, $Headers, $ContentType = 'application/json') {
     Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession)
 }
 
@@ -156,10 +164,11 @@ function Start-BraviaApp {
     [String]$AppName
     )
     $Apps = Get-BraviaApps
-    $response = Send-BraviaPostRequest 'http://' + $Script:BraviaConfig.Address + '/DIAL/apps/' + $apps[$AppName]
+    $response = Send-BraviaPostRequest -Path ('DIAL/apps/' + $apps[$AppName])
 }
 
 function Send-BraviaRemoteCode($code_name) {
+    Write-Output $Script:BraviaConfig.RemoteCodes[$code_name]
     $code = $Script:BraviaConfig.RemoteCodes[$code_name]
     $Headers = @{'SOAPACTION' = '"urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"'}
     #Seriously, Sony?
