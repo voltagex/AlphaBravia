@@ -164,7 +164,7 @@ function Start-BraviaApp {
     [String]$AppName
     )
     $Apps = Get-BraviaApps
-    $response = Send-BraviaPostRequest -Path ('DIAL/apps/' + $apps[$AppName])
+    $response = Send-BraviaPostRequest ('DIAL/apps/' + $apps[$AppName])
 }
 
 function Send-BraviaRemoteCode($code_name) {
@@ -189,4 +189,4 @@ function Get-BraviaRemoteCodes {
 }
 
 Get-ModuleConfiguration
-
+Get-BraviaRemoteCodes
