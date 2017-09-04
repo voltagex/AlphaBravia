@@ -168,8 +168,8 @@ function Start-BraviaApp {
 }
 
 function Send-BraviaRemoteCode($code_name) {
-    Write-Output $Script:BraviaConfig.RemoteCodes[$code_name]
-    $code = $Script:BraviaConfig.RemoteCodes[$code_name]
+    $code = $Script:BraviaConfig.RemoteCodes.$code_name
+
     $Headers = @{'SOAPACTION' = '"urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"'}
     #Seriously, Sony?
     $Body = '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">'
