@@ -90,8 +90,6 @@ function Start-BraviaRegistration() {
         Update-Configuration -Name "Auth" -Value $auth
         Update-Configuration -Name "AuthExpiry" -Value $expiry
         Write-Output "Already authorised with the TV, saving cookie"
-        Exit
-
     }
 
     else {
@@ -132,14 +130,23 @@ function Get-BraviaSession {
 }
 
 function Send-BraviaPostRequest($Path, $Headers, $Body, $ContentType = 'application/json') {
-    if ($Body -eq $null) { #empty POST?
 
-            Write-Output   "empty"
-            Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Method POST
-    } 
-    
-    else {
-            Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Headers $Headers -Body $Body -ContentType $ContentType -Method POST
+    try {
+        if ($Body -eq $null) { #empty POST?
+
+                Write-Output   "empty"
+                Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Method POST
+        } 
+        
+        else {
+                Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Headers $Headers -Body $Body -ContentType $ContentType -Method POST
+        }
+    }
+
+    catch {
+        Write-Output "Caught exception"
+        Start-BraviaRegistration
+        Write-Output "Retry your command"
     }
 }
 
