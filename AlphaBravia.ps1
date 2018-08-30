@@ -51,10 +51,7 @@ function Get-ModuleConfiguration {
     }
 
     Reload-Configuration | Out-Null
-
-    Update-Configuration -Name "RemoteCodes" -Value (Get-BraviaRemoteCodes)
-
-    
+    Update-Configuration -Name "RemoteCodes" -Value (Get-BraviaRemoteCodes)  
 }
 
 function New-PayloadObject($Method, $MethodParams, $Version = "1.0") {
@@ -135,7 +132,7 @@ function Send-BraviaPostRequest($Path, $Headers, $Body, $ContentType = 'applicat
         if ($Body -eq $null) { #empty POST?
 
                 Write-Output   "empty"
-                Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Method POST
+                Invoke-WebRequest ('http://' + $Script:BraviaConfig.Address + '/' + $Path) -WebSession (Get-BraviaSession) -Method POST -ContentType $ContentType
         } 
         
         else {
@@ -174,16 +171,60 @@ function Start-BraviaApp {
     $response = Send-BraviaPostRequest ('DIAL/apps/' + $apps[$AppName])
 }
 
-function Send-BraviaRemoteCode($code_name) {
-    $code = $Script:BraviaConfig.RemoteCodes.$code_name
+function Send-BraviaRemoteCode {
+    
+    [Alias("tv")]
+    #https://foxdeploy.com/2017/01/13/adding-tab-completion-to-your-powershell-functions/
+    [CmdletBinding()]
+    Param()
+    DynamicParam {
+ 
+        # Set the dynamic parameters' name
+        $ParameterName = 'Code'
+
+        # Create the dictionary
+        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+
+        # Create the collection of attributes
+        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+
+        # Create and set the parameters' attributes
+        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
+        $ParameterAttribute.Mandatory = $true
+        $ParameterAttribute.Position = 1
+
+        # Add the attributes to the attributes collection
+        $AttributeCollection.Add($ParameterAttribute)
+
+        # Generate and set the ValidateSet
+        $arrSet = $Script:BraviaConfig.RemoteCodes.Keys
+        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($arrSet)
+
+        # Add the ValidateSet to the attributes collection
+        $AttributeCollection.Add($ValidateSetAttribute)
+
+        # Create and return the dynamic parameter
+        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
+        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
+        return $RuntimeParameterDictionary
+}
+
+begin {
+    # Bind the parameter to a friendly variable
+    $Code = $PsBoundParameters[$ParameterName]
+}
+
+
+    process{
+    $selectedCode = $Script:BraviaConfig.RemoteCodes.$Code
 
     $Headers = @{'SOAPACTION' = '"urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"'}
     #Seriously, Sony?
     $Body = '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">'
     $Body += '<s:Body><u:X_SendIRCC xmlns:u="urn:schemas-sony-com:service:IRCC:1"><IRCCCode>'
-    $Body += $code + '</IRCCCode></u:X_SendIRCC></s:Body></s:Envelope>'
+    $Body += $selectedCode + '</IRCCCode></u:X_SendIRCC></s:Body></s:Envelope>'
     Send-BraviaPostRequest -Path "sony/IRCC" -Headers $Headers -Body $Body -ContentType "text/xml"
-
+    }
 }
 
 function Get-BraviaRemoteCodes {
@@ -196,4 +237,3 @@ function Get-BraviaRemoteCodes {
 }
 
 Get-ModuleConfiguration
-Get-BraviaRemoteCodes
