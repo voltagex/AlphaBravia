@@ -1,3 +1,5 @@
+Archived: I no longer have this TV.
+
 AlphaBravia
 ================
 A PowerShell module to control 2016 Bravia TVs (tested on X80D series)
